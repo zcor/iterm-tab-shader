@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title description">
+  <title id="title">iTerm Tab Shader palette</title>
+  <desc id="description">Three rows show Codex Luna blue, Terra green, and Sol gold shades from minimal to xhigh effort. Three smaller swatches show Grok, Gemini, and Kimi companion shades.</desc>
+  <defs>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="16"/></filter>
+    <linearGradient id="top" x1="0" x2="1"><stop stop-color="#151a25"/><stop offset="1" stop-color="#0d0e12"/></linearGradient>
+  </defs>
+  <rect width="1200" height="760" fill="#0d0e12"/>
+  <rect x="40" y="38" width="1120" height="684" rx="28" fill="url(#top)" stroke="#2b3039"/>
+  <circle cx="1080" cy="125" r="88" fill="#194667" opacity=".32" filter="url(#glow)"/>
+  <circle cx="955" cy="620" r="100" fill="#5a490b" opacity=".18" filter="url(#glow)"/>
+  <text x="94" y="122" fill="#f2f3f5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="46" font-weight="700">Agent tints with a family resemblance</text>
+  <text x="94" y="160" fill="#aeb6c2" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="22">Codex tier sets the hue. Reasoning effort sets the brightness.</text>
+  <g fill="#aeb6c2" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17" font-weight="600" text-anchor="middle">
+    <text x="445" y="222">MINIMAL</text><text x="575" y="222">LOW</text><text x="705" y="222">MEDIUM</text><text x="835" y="222">HIGH</text><text x="965" y="222">XHIGH / MAX</text>
+  </g>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <text x="94" y="298" fill="#8da9cd" font-size="30" font-weight="700">Luna</text><text x="94" y="325" fill="#aeb6c2" font-size="17">night-sky blue</text>
+    <rect x="380" y="252" width="120" height="88" rx="14" fill="#08111c" stroke="#334055"/><rect x="510" y="252" width="120" height="88" rx="14" fill="#0b1b2d" stroke="#334055"/><rect x="640" y="252" width="120" height="88" rx="14" fill="#102945" stroke="#3b638c"/><rect x="770" y="252" width="120" height="88" rx="14" fill="#143755" stroke="#4780ad"/><rect x="900" y="252" width="120" height="88" rx="14" fill="#194667" stroke="#5998c9"/>
+    <text x="94" y="418" fill="#8dc59e" font-size="30" font-weight="700">Terra</text><text x="94" y="445" fill="#aeb6c2" font-size="17">forest green</text>
+    <rect x="380" y="372" width="120" height="88" rx="14" fill="#07150c" stroke="#294734"/><rect x="510" y="372" width="120" height="88" rx="14" fill="#0a2113" stroke="#315b41"/><rect x="640" y="372" width="120" height="88" rx="14" fill="#0e301c" stroke="#3f7652"/><rect x="770" y="372" width="120" height="88" rx="14" fill="#124025" stroke="#4b8c61"/><rect x="900" y="372" width="120" height="88" rx="14" fill="#17502f" stroke="#58a06d"/>
+    <text x="94" y="538" fill="#d4c176" font-size="30" font-weight="700">Sol</text><text x="94" y="565" fill="#aeb6c2" font-size="17">solar gold</text>
+    <rect x="380" y="492" width="120" height="88" rx="14" fill="#1b1706" stroke="#5a4b1b"/><rect x="510" y="492" width="120" height="88" rx="14" fill="#292206" stroke="#735f1d"/><rect x="640" y="492" width="120" height="88" rx="14" fill="#382e08" stroke="#92782a"/><rect x="770" y="492" width="120" height="88" rx="14" fill="#493b09" stroke="#b29234"/><rect x="900" y="492" width="120" height="88" rx="14" fill="#5a490b" stroke="#c5aa45"/>
+  </g>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <text x="94" y="655" fill="#aeb6c2" font-size="18" font-weight="600">COMPANIONS</text>
+    <rect x="290" y="620" width="176" height="58" rx="14" fill="#082536" stroke="#3b7894"/><text x="378" y="657" fill="#e5eef4" font-size="21" font-weight="700" text-anchor="middle">Grok</text>
+    <rect x="484" y="620" width="176" height="58" rx="14" fill="#0b2b2b" stroke="#438484"/><text x="572" y="657" fill="#e5f4f4" font-size="21" font-weight="700" text-anchor="middle">Gemini</text>
+    <rect x="678" y="620" width="176" height="58" rx="14" fill="#291430" stroke="#865095"/><text x="766" y="657" fill="#f1e7f4" font-size="21" font-weight="700" text-anchor="middle">Kimi</text>
+    <rect x="872" y="620" width="176" height="58" rx="14" fill="#ff9f0a"/><text x="960" y="657" fill="#211600" font-size="21" font-weight="800" text-anchor="middle">ATTENTION</text>
+  </g>
+</svg>
