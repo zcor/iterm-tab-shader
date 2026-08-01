@@ -7,6 +7,11 @@ wash. Codex uses a tier-and-effort palette. Claude, Grok, Gemini, and Kimi get
 their own companion shades. An optional iTerm2 monitor adds a native orange tab
 highlight and `ATTENTION` badge when an agent finishes in another tab.
 
+![Redacted multi-agent iTerm working window with coloured panes and orange attention states](docs/redacted-iterm-panorama.png)
+
+*A redacted visual derivative of a busy iTerm working window. All real tab and
+terminal text has been replaced.*
+
 The project is for macOS, iTerm2, and interactive zsh. It is deliberately small:
 a sourced zsh file, one optional Python monitor, no server, and no telemetry.
 
@@ -118,9 +123,10 @@ local sound files and a process lock. The Codex database read is optional and
 read-only. See [SECURITY.md](SECURITY.md) before proposing integrations that
 would widen those boundaries.
 
-The original private terminal screenshot is intentionally not included. Even a
-blurred capture can preserve project names, tab titles, and terminal details.
-The palette image above is a deterministic SVG with no user data.
+The raw terminal screenshot is intentionally not included. Even a blurred
+capture can preserve project names, tab titles, and terminal details. The
+panorama above preserves no real tab or terminal text, and the palette image is
+a deterministic SVG with no user data.
 
 ## Development
 
