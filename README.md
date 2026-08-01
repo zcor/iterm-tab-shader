@@ -13,7 +13,7 @@ highlight and `ATTENTION` badge when an agent finishes in another tab.
 terminal text has been replaced.*
 
 The project is for macOS, iTerm2, and interactive zsh. It is deliberately small:
-a sourced zsh file, one optional Python monitor, no server, and no telemetry.
+a sourced zsh file, two local Python helpers, no server, and no telemetry.
 
 ## The palette
 
@@ -55,18 +55,36 @@ moves to the next one and the last step restores iTerm's profile background.
 ### Live Codex model changes
 
 The `codex` wrapper uses the launch arguments or `~/.codex/config.toml` for the
-first shade. When available, it also reads only the model and effort fields from
-the local Codex diagnostic SQLite database, scoped to the Codex process on the
-current terminal. That lets a `/model` change update the tint without confusing
-neighbouring tabs.
+first shade. A small broker then extracts model and effort changes from the
+local Codex diagnostic SQLite database. Each update is scoped to the Codex
+process on its terminal, so `/model` keeps working in long-lived tabs without
+confusing neighbouring tabs.
 
-This is a local, read-only compatibility feature. It does not read prompts,
-responses, credentials, or account data, and it makes no connection. The
-database schema is not a public contract, so this extra tracking may need an
-update after a Codex release. To keep the launch shade but disable tracking:
+All active tabs share one broker, one persistent read-only database connection,
+and one incremental query per polling interval. Each tab watches a tiny local
+state file. This preserves live tracking without launching two `sqlite3`
+processes per tab every second. The broker exits after the last Codex tab has
+been gone for 60 seconds, and stale registrations are removed automatically.
+Orphaned state and temporary files are also swept by the broker.
+
+This is a local, read-only compatibility feature. It extracts no prompts,
+responses, credentials, or account data, and it makes no network connection.
+Its private runtime files contain only a process ID, model slug, and effort
+name. The database schema is not a public contract, so this extra tracking may
+need an update after a Codex release. To keep the launch shade but disable
+tracking:
 
 ```zsh
 export ITERM_TAB_SHADER_CODEX_LIVE=0
+```
+
+The defaults favour quick visual feedback and modest cleanup latency. They can
+be tuned without changing the code:
+
+```zsh
+export ITERM_TAB_SHADER_CODEX_POLL_SECONDS=0.5
+export ITERM_TAB_SHADER_BROKER_IDLE_SECONDS=60
+export ITERM_TAB_SHADER_RUNTIME_DIR="${TMPDIR:-/tmp}/iterm-tab-shader"
 ```
 
 Unknown model names use neutral slate (`#23232a`).
@@ -130,9 +148,10 @@ a deterministic SVG with no user data.
 
 ## Development
 
-The runtime shell file has no package dependencies. The monitor requires Python
-3.10 or newer and the optional `iterm2` package only when it is run inside
-iTerm2.
+Live Codex tracking requires Python 3.10 or newer and uses only the standard
+library. Launch-time tinting still works without it. The attention monitor uses
+the same Python baseline and needs the optional `iterm2` package only when it is
+run inside iTerm2.
 
 ```zsh
 make check

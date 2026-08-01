@@ -9,6 +9,9 @@
 typeset -g ITERM_TAB_SHADER_HOME="${ITERM_TAB_SHADER_HOME:-${${(%):-%x}:A:h}}"
 typeset -g ITERM_TAB_SHADER_CACHE_DIR="${ITERM_TAB_SHADER_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/Library/Caches}/iterm-tab-shader}"
 typeset -g ITERM_TAB_SHADER_CLAUDE_STATE_DIR="${ITERM_TAB_SHADER_CLAUDE_STATE_DIR:-${TMPDIR:-/tmp}/iterm-tab-shader-claude}"
+typeset -g ITERM_TAB_SHADER_RUNTIME_DIR="${ITERM_TAB_SHADER_RUNTIME_DIR:-${TMPDIR:-/tmp}/iterm-tab-shader}"
+typeset -g ITERM_TAB_SHADER_CODEX_BROKER="${ITERM_TAB_SHADER_CODEX_BROKER:-$ITERM_TAB_SHADER_HOME/scripts/codex_state_broker.py}"
+typeset -g _ITS_CODEX_BROKER_WARNED="${_ITS_CODEX_BROKER_WARNED:-0}"
 
 _its_bg_set() {
     printf '\033]11;#%s\a' "${1#\#}" > /dev/tty
@@ -81,23 +84,48 @@ _its_config_value() {
     sed -nE "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([^\"]+)\".*/\1/p" "$path" | head -1
 }
 
-_its_read_codex_event() {
-    local database="$1"
-    local pid="$2"
-    local kind="$3"
-    local row=""
-    local parsed=""
+_its_codex_runtime_key() {
+    local source="${ITERM_SESSION_ID:-$(tty 2>/dev/null)}"
+    print -r -- "${source//[^A-Za-z0-9._-]/_}"
+}
 
-    [[ -r "$database" && "$pid" == <-> ]] || return 0
-    case "$kind" in
-        model)
-            row="$(sqlite3 -readonly -noheader "$database" "select feedback_log_body from logs where process_uuid like 'pid:${pid}:%' and target = 'codex_core::session::handlers' and feedback_log_body like '%model: Some(\"%' order by id desc limit 1;" 2>/dev/null)"
-            parsed="$(printf '%s\n' "$row" | sed -nE 's/.*model: Some\("([^\"]+)"\).*/\1/p')" ;;
-        effort)
-            row="$(sqlite3 -readonly -noheader "$database" "select feedback_log_body from logs where process_uuid like 'pid:${pid}:%' and target = 'codex_core::session::handlers' and feedback_log_body like '%effort: Some(Some(%' order by id desc limit 1;" 2>/dev/null)"
-            parsed="$(printf '%s\n' "$row" | sed -nE 's/.*effort: Some\(Some\(([A-Za-z]+)\)\).*/\1/p')" ;;
-    esac
-    print -r -- "$parsed"
+_its_start_codex_broker() {
+    local database="$1"
+    local pid_file="$ITERM_TAB_SHADER_RUNTIME_DIR/broker.pid"
+    local broker_pid=""
+    local wait_count=""
+
+    if [[ -r "$pid_file" ]]; then
+        broker_pid="$(<"$pid_file")"
+        if [[ "$broker_pid" == <-> ]] && kill -0 "$broker_pid" 2>/dev/null \
+            && [[ -d "$ITERM_TAB_SHADER_RUNTIME_DIR/registrations" && -d "$ITERM_TAB_SHADER_RUNTIME_DIR/states" ]]; then
+            return 0
+        fi
+    fi
+    if ! command -v python3 >/dev/null || [[ ! -r "$ITERM_TAB_SHADER_CODEX_BROKER" ]]; then
+        if [[ "$_ITS_CODEX_BROKER_WARNED" != "1" ]]; then
+            print -u2 "iTerm Tab Shader: Python 3 and codex_state_broker.py are required for live /model tracking"
+            _ITS_CODEX_BROKER_WARNED=1
+        fi
+        return 1
+    fi
+    command python3 "$ITERM_TAB_SHADER_CODEX_BROKER" \
+        --database "$database" \
+        --runtime-dir "$ITERM_TAB_SHADER_RUNTIME_DIR" \
+        --poll-seconds "${ITERM_TAB_SHADER_CODEX_POLL_SECONDS:-0.5}" \
+        --idle-seconds "${ITERM_TAB_SHADER_BROKER_IDLE_SECONDS:-60}" \
+        </dev/null >/dev/null 2>&1 &!
+    for wait_count in {1..20}; do
+        if [[ -r "$pid_file" && -d "$ITERM_TAB_SHADER_RUNTIME_DIR/registrations" && -d "$ITERM_TAB_SHADER_RUNTIME_DIR/states" ]]; then
+            return 0
+        fi
+        sleep 0.025
+    done
+    if [[ "$_ITS_CODEX_BROKER_WARNED" != "1" ]]; then
+        print -u2 "iTerm Tab Shader: live /model broker could not start"
+        _ITS_CODEX_BROKER_WARNED=1
+    fi
+    return 1
 }
 
 codex() {
@@ -110,6 +138,9 @@ codex() {
     local colour=""
     local tty_path=""
     local watcher=""
+    local session_key=""
+    local registration_file=""
+    local state_file=""
     local index
 
     for (( index = 1; index <= $#; index++ )); do
@@ -134,20 +165,41 @@ codex() {
     colour="$(_its_codex_bg "$model" "$effort")"
     _its_bg_set "$colour"
 
-    if [[ "${ITERM_TAB_SHADER_CODEX_LIVE:-1}" != "0" && -r "$database" ]] && command -v lsof >/dev/null && command -v sqlite3 >/dev/null; then
+    if [[ "${ITERM_TAB_SHADER_CODEX_LIVE:-1}" != "0" && -r "$database" ]] && command -v lsof >/dev/null && _its_start_codex_broker "$database"; then
         tty_path="$(tty)"
+        session_key="$(_its_codex_runtime_key)"
+        registration_file="$ITERM_TAB_SHADER_RUNTIME_DIR/registrations/$session_key.pid"
+        state_file="$ITERM_TAB_SHADER_RUNTIME_DIR/states/$session_key.state"
+        command rm -f -- "$registration_file" "$state_file"
         (
             local live_model="$model"
             local live_effort="$effort"
             local seen="$model:$effort"
             local pid=""
+            local state=""
             local next_model=""
             local next_effort=""
+            local registration_tmp=""
+            local broker_check=0
+            trap 'command rm -f -- "$registration_file" "$state_file" "$registration_tmp"' EXIT
+            trap 'exit 0' HUP INT TERM
             while true; do
-                [[ -n "$pid" ]] || pid="$(lsof -t -a -c codex "$tty_path" 2>/dev/null | head -1)"
+                if [[ -z "$pid" ]]; then
+                    pid="$(lsof -t -a -c codex "$tty_path" 2>/dev/null | head -1)"
+                    if [[ "$pid" == <-> ]]; then
+                        registration_tmp="$registration_file.$$.$RANDOM.tmp"
+                        print -r -- "$pid" > "$registration_tmp"
+                        command chmod 600 "$registration_tmp" 2>/dev/null
+                        command mv -f -- "$registration_tmp" "$registration_file"
+                        registration_tmp=""
+                    fi
+                fi
                 if [[ "$pid" == <-> ]]; then
-                    next_model="$(_its_read_codex_event "$database" "$pid" model)"
-                    next_effort="$(_its_read_codex_event "$database" "$pid" effort)"
+                    if [[ -r "$state_file" ]]; then
+                        state="$(<"$state_file")"
+                        next_model="${state%%|*}"
+                        next_effort="${state#*|}"
+                    fi
                     [[ -n "$next_model" ]] && live_model="$next_model"
                     [[ -n "$next_effort" ]] && live_effort="${(L)next_effort}"
                 fi
@@ -155,7 +207,12 @@ codex() {
                     seen="$live_model:$live_effort"
                     _its_bg_set "$(_its_codex_bg "$live_model" "$live_effort")"
                 fi
-                sleep 1
+                broker_check=$((broker_check + 1))
+                if (( broker_check >= 2 )); then
+                    broker_check=0
+                    _its_start_codex_broker "$database"
+                fi
+                sleep "${ITERM_TAB_SHADER_CODEX_POLL_SECONDS:-0.5}"
             done
         ) &!
         watcher=$!
@@ -164,6 +221,7 @@ codex() {
     command codex "$@"
     local status=$?
     [[ -n "$watcher" ]] && kill "$watcher" 2>/dev/null
+    [[ -n "$registration_file" ]] && command rm -f -- "$registration_file" "$state_file"
     _its_bg_reset
     return "$status"
 }
